@@ -53,7 +53,7 @@ class GaussianFieldEnv(gym.Env):
         self.agent_pos = self.camera.position
         self.agent_altitude = self.camera.altitude
 
-        # 🔹 Compute maximum footprint size at minimum altitude
+        # Compute maximum footprint size at minimum altitude
         self.camera.set_altitude(self.h_range[0])  # minimum altitude
         self.fp_shape = self._get_fp_shape()  # store maximum shape
         self.camera.set_altitude(self.agent_altitude)  # restore initial altitude
@@ -104,6 +104,7 @@ class GaussianFieldEnv(gym.Env):
         return self._get_observation(), reward, False, False, {}
 
     def _compute_entropy(self):
+        # TODO entropy of all cell? or only observed?
         p = self.belief_map
         return -np.sum(p * np.log(p + 1e-10))
 

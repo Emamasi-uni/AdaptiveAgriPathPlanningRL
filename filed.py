@@ -17,10 +17,7 @@ class SimpleField:
         self.grid_shape = ground_truth_map.shape
 
     def get_visible_range(self, uav_pos, fov=60, index_form=False):
-        # Copia la logica del metodo Field.get_visible_range, adattandola al tuo grid_shape
-        # Supponiamo grid_info.length = 1, e coordinate da 0 a shape in x,y
-
-        grid_length = 1  # se non hai grid_info.length, metti 1
+        grid_length = 1 
         fov_rad = np.deg2rad(fov) / 2
 
         x_dist = round(uav_pos.altitude * np.tan(fov_rad) / grid_length) * grid_length
@@ -37,8 +34,6 @@ class SimpleField:
         if not index_form:
             return [[x_min, x_max], [y_min, y_max]]
 
-        # Qui converto coordinate in indici: 
-        # Supponendo griglia 2D (righe = y, colonne = x)
         i_min = int(y_min)
         i_max = int(y_max)
         j_min = int(x_min)
