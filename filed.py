@@ -17,12 +17,17 @@ class SimpleField:
         self.grid_shape = ground_truth_map.shape
 
     def get_visible_range(self, uav_pos, fov=60, index_form=False):
-        grid_length = 1 
+        # TODO: make grid_length a parameter
+        # TODO: clip out out of boundary
+        grid_length = 0.125
+        # grid_length = 1 
+        # print(f"grid shape: {self.grid_shape}")
+
         fov_rad = np.deg2rad(fov) / 2
 
         x_dist = round(uav_pos.altitude * np.tan(fov_rad) / grid_length) * grid_length
         y_dist = round(uav_pos.altitude * np.tan(fov_rad) / grid_length) * grid_length
-
+        # print(f"dist filed x:{x_dist} y:{y_dist}")
         x_min = max(0, uav_pos.position[0] - x_dist)
         x_max = min(self.grid_shape[1], uav_pos.position[0] + x_dist)
         y_min = max(0, uav_pos.position[1] - y_dist)
@@ -34,15 +39,17 @@ class SimpleField:
         if not index_form:
             return [[x_min, x_max], [y_min, y_max]]
 
-        i_min = int(y_min)
-        i_max = int(y_max)
-        j_min = int(x_min)
-        j_max = int(x_max)
+        # i_min = int(y_min)
+        # i_max = int(y_max)
+        i_min= int(self.grid_shape[0] - y_max / grid_length)
+        i_max= int(self.grid_shape[0] - y_min / grid_length)
+        j_min = int(x_min / grid_length)
+        j_max = int(x_max / grid_length)
         return [[i_min, i_max], [j_min, j_max]]
 
     def get_observations(self, uav_pos, sigmas=None):
         [[i_min, i_max], [j_min, j_max]] = self.get_visible_range(uav_pos, index_form=True)
-
+        # print(f"Footprint indices in filed: {i_min}-{i_max}, {j_min}-{j_max}")
         submap = self.ground_truth_map[i_min:i_max, j_min:j_max]
 
         if sigmas is None:
