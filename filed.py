@@ -12,44 +12,58 @@ class SimpleField:
         start_alt = altitude_range[0]
         end_alt = altitude_range[-1]
         num_altitudes = 6
-        self.altitudes = np.round(np.linspace(start_alt, end_alt, num=num_altitudes), decimals=2)
+        self.altitudes = np.round(
+            np.linspace(start_alt, end_alt, num=num_altitudes), decimals=2
+        )
         self.field_type = "Gaussian"
         self.grid_shape = ground_truth_map.shape
 
     def get_visible_range(self, uav_pos, fov=60, index_form=False):
         # TODO: make grid_length a parameter
-        # TODO: clip out out of boundary
+        # TODO: clip out out of boundary with grid length
+        # TODO: consider centered grid
         grid_length = 0.125
-        # grid_length = 1 
-        # print(f"grid shape: {self.grid_shape}")
+        # grid_length = 1
+        center = True
+        grid_bound_min = np.zeros(2)
+        grid_bound_max = np.array(self.grid_shape) * grid_length
+        center_ind_offset = [self.grid_shape[0], 0]
+        if center:
+            grid_bound_max /= 2
+            grid_bound_min = -grid_bound_max
+            center_ind_offset = [
+                self.grid_shape[0] // 2,
+                self.grid_shape[1] // 2,
+            ]
 
         fov_rad = np.deg2rad(fov) / 2
-
         x_dist = round(uav_pos.altitude * np.tan(fov_rad) / grid_length) * grid_length
         y_dist = round(uav_pos.altitude * np.tan(fov_rad) / grid_length) * grid_length
-        # print(f"dist filed x:{x_dist} y:{y_dist}")
-        x_min = max(0, uav_pos.position[0] - x_dist)
-        x_max = min(self.grid_shape[1], uav_pos.position[0] + x_dist)
-        y_min = max(0, uav_pos.position[1] - y_dist)
-        y_max = min(self.grid_shape[0], uav_pos.position[1] + y_dist)
+        x_min = max(grid_bound_min[1], uav_pos.position[0] - x_dist)
+        x_max = min(grid_bound_max[1], uav_pos.position[0] + x_dist)
+        y_min = max(grid_bound_min[0], uav_pos.position[1] - y_dist)
+        y_max = min(grid_bound_max[0], uav_pos.position[1] + y_dist)
 
-        if x_max - x_min == 0 or y_max - y_min == 0:
+        if x_max - x_min <= 0 or y_max - y_min <= 0:
             return [[0, 0], [0, 0]]
 
         if not index_form:
             return [[x_min, x_max], [y_min, y_max]]
 
-        # i_min = int(y_min)
-        # i_max = int(y_max)
-        i_min= int(self.grid_shape[0] - y_max / grid_length)
-        i_max= int(self.grid_shape[0] - y_min / grid_length)
-        j_min = int(x_min / grid_length)
-        j_max = int(x_max / grid_length)
+        i_min = int(-y_max / grid_length + center_ind_offset[0])
+        i_max = int(-y_min / grid_length + center_ind_offset[0])
+        j_min = int(x_min / grid_length + center_ind_offset[1])
+        j_max = int(x_max / grid_length + center_ind_offset[1])
+
+        if i_max - i_min <= 0 or j_max - j_min <= 0:
+            return [[0, 0], [0, 0]]
+
         return [[i_min, i_max], [j_min, j_max]]
 
     def get_observations(self, uav_pos, sigmas=None):
-        [[i_min, i_max], [j_min, j_max]] = self.get_visible_range(uav_pos, index_form=True)
-        # print(f"Footprint indices in filed: {i_min}-{i_max}, {j_min}-{j_max}")
+        [[i_min, i_max], [j_min, j_max]] = self.get_visible_range(
+            uav_pos, index_form=True
+        )
         submap = self.ground_truth_map[i_min:i_max, j_min:j_max]
 
         if sigmas is None:
