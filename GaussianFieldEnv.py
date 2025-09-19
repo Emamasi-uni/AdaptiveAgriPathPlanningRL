@@ -9,8 +9,10 @@ from mapper_LBP import OccupancyMap as OM
 
 
 class GaussianFieldEnv(gym.Env):
-    def __init__(self, grid_info, altitudes=6, fov=60, binary=False, cluster_radius=3.0, f_overlap=0.8, s_overlap=0.7, a=1, b=0.015):
+    def __init__(self, max_steps, grid_info, altitudes=6, fov=60, binary=False, cluster_radius=3.0, f_overlap=0.8, s_overlap=0.7, a=1, b=0.015):
         super().__init__()
+        self.current_steps = 0
+        self.max_steps = max_steps
         self.grid_info = grid_info
         self.altitudes = altitudes
         self.fov = fov
@@ -69,6 +71,7 @@ class GaussianFieldEnv(gym.Env):
         return self._get_observation(), {}
 
     def step(self, action_idx):
+        self.current_steps += 1
         actions = ["front", "back", "right", "left", "up", "down", "hover"]
         action = actions[action_idx]
 
@@ -101,7 +104,9 @@ class GaussianFieldEnv(gym.Env):
         reward = self.initial_entropy - new_entropy
         self.initial_entropy = new_entropy
 
-        return self._get_observation(), reward, False, False, {}
+        truncated = self.current_steps >= self.max_steps
+
+        return self._get_observation(), reward, False, truncated, {}
 
     def _compute_entropy(self):
         # TODO entropy of all cell? or only observed?

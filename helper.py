@@ -1,4 +1,5 @@
 import numpy as np
+import json
 
 
 def perform_mapping(
@@ -182,3 +183,14 @@ class uav_position:
 
     def __hash__(self):
         return hash((self.position, self.altitude))
+    
+def save_dict(dictionary, file_path):
+    with open(file_path, "w") as file:
+        json.dump(dictionary, file)
+
+
+def read_dict(file_path):
+    with open(file_path, "r") as file:
+        load_dictionary = json.load(file)
+
+    return load_dictionary
