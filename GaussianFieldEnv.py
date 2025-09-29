@@ -99,14 +99,26 @@ class GaussianFieldEnv(gym.Env):
             uav_pos,
             conf_dict=None     # pass sensor here if needed
         )
-
+        
+        # Compute reward as reduction in entropy
         new_entropy = self._compute_entropy()
         reward = self.initial_entropy - new_entropy
         self.initial_entropy = new_entropy
 
+        # Check termination
         truncated = self.current_steps >= self.max_steps
+        terminated = False
 
-        return self._get_observation(), reward, False, truncated, {}
+        predictions = np.argmax(self.belief_map, axis=-1)  
+        ground_truth = self.true_field.ground_truth_map   
+        
+        correct = np.sum(predictions == ground_truth)
+        total = ground_truth.size
+        accuracy = correct / total
+
+        info = {"cell_accuracy": accuracy}
+
+        return self._get_observation(), reward, terminated, truncated, info
 
     def _compute_entropy(self):
         # TODO entropy of all cell? or only observed?

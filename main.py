@@ -28,7 +28,7 @@ def train_dqn_model(model_path, env_kwargs=None, total_timesteps=100_000, device
     env_kwargs = env_kwargs or {}
     checkpoint_callback = CheckpointCallback(save_freq=10000, save_path='./models/',
                                          name_prefix='dqn_gaussian')
-    reward_logger = RewardLoggerCallback(log_interval=10)  
+    reward_logger = RewardLoggerCallback()  
     callback = CallbackList([reward_logger, checkpoint_callback])
 
     env = GaussianFieldEnv(**env_kwargs)
@@ -49,6 +49,7 @@ def train_dqn_model(model_path, env_kwargs=None, total_timesteps=100_000, device
     print(f"Training completed in {training_time:.2f} seconds.")
     train_data['training_time'].append(training_time)
     train_data["episode_rewards"] = [float(r) for r in reward_logger.episode_rewards]
+    train_data["episode_accuracy"] = [float(a) for a in reward_logger.mean_acc_episode]
 
     save_dict(train_data, f"./data/train_data_{current_datetime}.json")
     model.save(model_path)
@@ -57,7 +58,7 @@ def train_dqn_model(model_path, env_kwargs=None, total_timesteps=100_000, device
     print("Stop train")
 
 
-def test_dqn_model(model_path, env_kwargs=None, n_envs=20, max_steps=200, render=False):
+def test_dqn_model(model_path, strategy='dqn', env_kwargs=None, n_envs=20, render=False):
     """
     Tests the DQN model on n_envs different environments.
 
@@ -77,30 +78,54 @@ def test_dqn_model(model_path, env_kwargs=None, n_envs=20, max_steps=200, render
     env_kwargs = env_kwargs or {}
 
     all_rewards = []
+    all_accuracies = []
+    all_steps_acc = []
 
     for i in tqdm(range(n_envs), desc="Testing environments"):
         env = GaussianFieldEnv(**env_kwargs)
         obs = env.reset(seed=i)[0]
         total_reward = 0
+        episode_acc = []
 
-        for _ in range(max_steps):
-            action, _ = model.predict(obs, deterministic=True)
+        while True:
+            if strategy == "random":
+                action = env.action_space.sample()
+            else:
+                action, _ = model.predict(obs, deterministic=True)
+
             obs, reward, terminated, truncated, info = env.step(action)
             total_reward += reward
+            if "cell_accuracy" in info:
+                episode_acc.append(info["cell_accuracy"])
+
             if render:
                 print(f"Step Reward: {reward:.4f} | Total: {total_reward:.4f}")
-            if terminated:
+            if terminated or truncated:
                 break
 
         all_rewards.append(total_reward)
+        if episode_acc:
+            all_accuracies.append(np.mean(episode_acc))
+            all_steps_acc.append(episode_acc)
 
     mean_reward = np.mean(all_rewards)
     std_reward = np.std(all_rewards)
+    mean_acc = np.mean(all_accuracies) if all_accuracies else None
+    std_acc = np.std(all_accuracies) if all_accuracies else None
     print(f"\n Average Reward over {n_envs} envs: {mean_reward:.4f} ± {std_reward:.4f}")
+    if mean_acc is not None:
+        print(f" Average Accuracy over {n_envs} envs: {mean_acc:.4f} ± {std_acc:.4f}")
+
+    # 🔹 Salvataggio su file
     test_data["all_rewards"] = [float(r) for r in all_rewards]
     test_data["mean_reward"] = mean_reward
     test_data["std_reward"] = std_reward
-    save_dict(test_data, "./data/test_data.json")
+    test_data["all_accuracies"] = [float(a) for a in all_accuracies]
+    test_data["mean_accuracy"] = mean_acc
+    test_data["std_accuracy"] = std_acc
+    test_data["all_steps_accuracy"] = all_steps_acc
+
+    save_dict(test_data, f"./data/test_data_{current_datetime}.json")
 
     print("Stop test")
 
@@ -115,7 +140,7 @@ if __name__ == "__main__":
         center = True
 
     env_config = {
-        "max_steps": 2000,
+        "max_steps": 1000,
         "grid_info": grid_info,
         "altitudes": 6,
         "fov": 60,
@@ -129,5 +154,4 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
     
     train_dqn_model(env_kwargs=env_config, total_timesteps=50_000, model_path=f"dqn_gaussian_{current_datetime}.zip", device=device)
-    test_dqn_model(model_path=f"dqn_gaussian_{current_datetime}.zip", env_kwargs=env_config, n_envs=3)
-
+    test_dqn_model(model_path=f"dqn_gaussian_{current_datetime}.zip", strategy='dqn', env_kwargs=env_config, n_envs=20)
