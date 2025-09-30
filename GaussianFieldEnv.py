@@ -42,6 +42,7 @@ class GaussianFieldEnv(gym.Env):
         self.reset()
 
     def reset(self, seed=None):
+        self.current_steps = 0
         self.occupancy_map = OM(self.grid_info.shape)
         self.belief_map = np.full((self.grid_info.shape[0], self.grid_info.shape[1], 2), 0.5)
         ground_truth = gaussian_random_field(self.cluster_radius, self.grid_info.shape, binary=self.binary_field,

@@ -140,7 +140,7 @@ if __name__ == "__main__":
         center = True
 
     env_config = {
-        "max_steps": 1000,
+        "max_steps": 250,
         "grid_info": grid_info,
         "altitudes": 6,
         "fov": 60,
