@@ -136,7 +136,7 @@ class GaussianFieldEnv(gym.Env):
 
     def _get_fp_shape(self):
         [[i_min, i_max], [j_min, j_max]] = self.camera.get_range(index_form=True)
-        return (max(1, i_max - i_min), max(1, j_max - j_min))
+        return max(1, i_max - i_min), max(1, j_max - j_min)
 
     def _get_observation(self):
         [[i_min, i_max], [j_min, j_max]] = self.camera.get_range(index_form=True)

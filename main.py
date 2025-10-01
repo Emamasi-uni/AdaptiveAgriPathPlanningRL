@@ -27,7 +27,7 @@ def train_dqn_model(model_path, env_kwargs=None, total_timesteps=100_000, device
     train_data = defaultdict(list)
     env_kwargs = env_kwargs or {}
     checkpoint_callback = CheckpointCallback(save_freq=10000, save_path='./models/',
-                                         name_prefix='dqn_gaussian')
+                                             name_prefix=f'dqn_gaussian_{current_datetime}')
     reward_logger = RewardLoggerCallback()  
     callback = CallbackList([reward_logger, checkpoint_callback])
 
@@ -69,12 +69,13 @@ def test_dqn_model(model_path, strategy='dqn', env_kwargs=None, n_envs=20, rende
         max_steps (int): Maximum number of steps per episode.
         render (bool): If True, prints the observation at each step.
     """
-    assert os.path.exists(model_path), f"Model not found: {model_path}"
     print("Start test")
     test_data = defaultdict(list)
 
-    model = DQN.load(model_path)
-    print(f"Model loaded from: {model_path}")
+    if strategy != 'random':
+        assert os.path.exists(model_path), f"Model not found: {model_path}"
+        model = DQN.load(model_path)
+        print(f"Model loaded from: {model_path}")
     env_kwargs = env_kwargs or {}
 
     all_rewards = []
@@ -153,5 +154,5 @@ if __name__ == "__main__":
     device = "cuda" if use_cuda else "cpu"
     print(f"Using device: {device}")
     
-    train_dqn_model(env_kwargs=env_config, total_timesteps=50_000, model_path=f"dqn_gaussian_{current_datetime}.zip", device=device)
-    test_dqn_model(model_path=f"dqn_gaussian_{current_datetime}.zip", strategy='dqn', env_kwargs=env_config, n_envs=20)
+    train_dqn_model(env_kwargs=env_config, total_timesteps=50_000, model_path=f"models/dqn_gaussian_{current_datetime}.zip", device=device)
+    test_dqn_model(model_path=f"models/dqn_gaussian_{current_datetime}.zip", strategy='dqn', env_kwargs=env_config, n_envs=20)
