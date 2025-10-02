@@ -47,7 +47,13 @@ def perform_mapping(
 
     fp_vertices_ij, submap = field_map.get_observations(uav_pos, sigmas)
 
+    I, J = 0, 1
+    zx = np.arange(fp_vertices_ij["ul"][I], fp_vertices_ij["bl"][I])
+    zy = np.arange(fp_vertices_ij["ul"][J], fp_vertices_ij["ur"][J])
+
     occupancy_map.update_belief_OG(fp_vertices_ij, submap, uav_pos)
+    occupancy_map.propagate_messages(fp_vertices_ij, submap, max_iterations=5, correlation_type="equal")
+    occupancy_map.update_news_belief_LBP_and_fuse_single(zx, zy, submap)
 
     belief_map[:, :, 1] = occupancy_map.get_belief().copy()
     belief_map[:, :, 0] = 1 - belief_map[:, :, 1]

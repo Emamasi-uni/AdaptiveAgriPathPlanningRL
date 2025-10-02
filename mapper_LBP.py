@@ -20,6 +20,7 @@ class OccupancyMap:
         self.conf_dict = conf_dict
         self.phi = np.full((self.N[0], self.N[1], 2), 0.5)  # Local evidence
         self.map_beliefs = np.full((self.N[0], self.N[1]), 0.5)  # Marginal beliefs
+        self.news_map_beliefs = np.full((1, 1, self.N[0], self.N[1]), 0.5, dtype=float)
 
         self.last_observations = np.array([])
         self.msgs = None
@@ -39,6 +40,7 @@ class OccupancyMap:
         self.last_observations = np.array([])
         self._init_LBP_msgs()
         self.map_beliefs = np.full((self.N[0], self.N[1]), 0.5)
+        self.news_map_beliefs = np.full((1, 1, self.N[0], self.N[1]), 0.5, dtype=float)
 
     def _init_LBP_msgs(self):
         """Initialize messages and their buffers for belief propagation."""
@@ -171,7 +173,7 @@ class OccupancyMap:
 
     def get_belief(self):
         """Return current belief map (probability of occupancy)."""
-        return self.map_beliefs
+        return self.news_map_beliefs
 
     def update_belief_OG(self, fp_vertices_ij, z, uav_pos):
         """
@@ -251,7 +253,6 @@ class OccupancyMap:
         self.last_observations = z
         if correlation_type is None:
             correlation_type = self.correlation_type
-
         psi = self.pairwise_potential(correlation_type)
 
         # reset msgs and msgs_buffer
