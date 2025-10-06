@@ -1,5 +1,7 @@
 import numpy as np
 import json
+import torch
+import torch.nn.functional as F
 
 
 def perform_mapping(
@@ -177,6 +179,24 @@ def adaptive_weights_matrix(obs_map):
     return psi
 
 
+def average_pool(patch, out_h, out_w):
+    """Adaptive average pooling for numpy arrays (H, W) or (H, W, C)."""
+    x = torch.tensor(patch, dtype=torch.float32)
+
+    if x.ndim == 2:  # (H, W)
+        x = x.unsqueeze(0).unsqueeze(0)  # → (1, 1, H, W)
+    elif x.ndim == 3:  # (H, W, C)
+        x = x.permute(2, 0, 1).unsqueeze(0)  # → (1, C, H, W)
+
+    pooled = F.adaptive_avg_pool2d(x, (out_h, out_w))  # → (1, C, out_h, out_w)
+    pooled = pooled.squeeze(0).permute(1, 2, 0).numpy()  # → (out_h, out_w, C)
+
+    if pooled.shape[-1] == 1:
+        pooled = pooled[..., 0]
+
+    return pooled
+
+
 class uav_position:
     def __init__(self, input) -> None:
         self.position = input[0]
@@ -189,7 +209,8 @@ class uav_position:
 
     def __hash__(self):
         return hash((self.position, self.altitude))
-    
+
+
 def save_dict(dictionary, file_path):
     with open(file_path, "w") as file:
         json.dump(dictionary, file)

@@ -3,7 +3,7 @@ import gymnasium as gym
 from gymnasium import spaces
 
 from filed import SimpleField
-from helper import gaussian_random_field, perform_mapping, uav_position
+from helper import gaussian_random_field, perform_mapping, uav_position, average_pool
 from uav_camera import Camera
 from mapper_LBP import OccupancyMap as OM
 
@@ -32,7 +32,7 @@ class GaussianFieldEnv(gym.Env):
         self.belief_map = None
         self.observation_count = None
         self.agent_pos = (0.0, 0.0)
-        self.agent_altitude = self.h_range[0]
+        self.agent_altitude = self.h_range[1]
 
         self.action_space = spaces.Discrete(7)  # 0-6 
 
@@ -53,8 +53,8 @@ class GaussianFieldEnv(gym.Env):
 
         # Reset Camera
         self.camera.reset()
-        self.agent_pos = self.camera.position
-        self.agent_altitude = self.camera.altitude
+        self.agent_pos = (0.0, 0.0)
+        self.agent_altitude = self.h_range[1]
 
         # Compute maximum footprint size at minimum altitude
         self.camera.set_altitude(self.h_range[0])  # minimum altitude
@@ -122,7 +122,6 @@ class GaussianFieldEnv(gym.Env):
         return self._get_observation(), reward, terminated, truncated, info
 
     def _compute_entropy(self):
-        # TODO entropy of all cell? or only observed?
         p = self.belief_map
         return -np.sum(p * np.log(p + 1e-10))
 
@@ -143,11 +142,11 @@ class GaussianFieldEnv(gym.Env):
         belief_patch = self.belief_map[i_min:i_max, j_min:j_max]
         count_patch = self.observation_count[i_min:i_max, j_min:j_max, :]
 
-        pooled_belief = self._average_pool(belief_patch, *self.fp_shape)
-        pooled_counts = np.stack([
-            self._average_pool(count_patch[..., a], *self.fp_shape)
-            for a in range(self.altitudes)
-        ], axis=-1)
+        pooled_belief = average_pool(belief_patch, *self.fp_shape)  # (fp_h, fp_w, 2)
+        pooled_belief = pooled_belief[..., 1]
+        pooled_counts = average_pool(count_patch, *self.fp_shape)  # (fp_h, fp_w, A)
+
+        pooled_counts = pooled_counts / self.max_steps
 
         obs = np.concatenate([
             pooled_belief.flatten(),
@@ -162,31 +161,3 @@ class GaussianFieldEnv(gym.Env):
         if 0 <= idx < self.altitudes:
             one_hot[idx] = 1.0
         return one_hot
-
-    def _average_pool(self, patch, out_h=None, out_w=None):
-        # If patch is 2D, stack with zeros to make it 3D
-        if patch.ndim == 2:
-            patch = np.stack([patch, np.zeros_like(patch)], axis=-1)
-        elif patch.ndim == 3 and patch.shape[2] > 2:
-            patch = patch[..., :2]
-
-        # Use maximum stored shape if not provided
-        if out_h is None or out_w is None:
-            out_h, out_w = self.fp_shape
-
-        in_h, in_w, _ = patch.shape
-        pooled = np.zeros((out_h, out_w))
-        stride_h = max(1, in_h // out_h)
-        stride_w = max(1, in_w // out_w)
-
-        for i in range(out_h):
-            for j in range(out_w):
-                x_start = min(i * stride_h, in_h)
-                y_start = min(j * stride_w, in_w)
-                x_end = min(x_start + stride_h, in_h)
-                y_end = min(y_start + stride_w, in_w)
-                if x_start < in_h and y_start < in_w:
-                    pooled[i, j] = np.mean(patch[x_start:x_end, y_start:y_end])
-                else:
-                    pooled[i, j] = 0.0  # zero padding
-        return pooled
