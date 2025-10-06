@@ -202,8 +202,11 @@ class Camera:
         grid_length = self.grid.length
         fov_rad = np.deg2rad(self.fov) / 2
         # Use provided position/altitude or default to current values.
-        x_dist = round(altitude * math.tan(fov_rad) / grid_length) * grid_length
-        y_dist = round(altitude * math.tan(fov_rad) / grid_length) * grid_length
+
+        scale_factor = 0.13
+        x_dist = round((altitude * math.tan(fov_rad) * scale_factor) / grid_length) * grid_length
+        y_dist = round((altitude * math.tan(fov_rad) * scale_factor) / grid_length) * grid_length
+
         # Clip the computed ranges within grid boundaries.
         x_min, x_max = np.clip(
             [position[0] - x_dist, position[0] + x_dist], *self.x_range

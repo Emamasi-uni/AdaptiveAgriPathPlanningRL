@@ -11,6 +11,8 @@ from tqdm import tqdm
 from GaussianFieldEnv import GaussianFieldEnv
 from callback import RewardLoggerCallback
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
+
+from custumCNN import CustomCNN
 from helper import save_dict
 
 
@@ -34,9 +36,19 @@ def train_dqn_model(model_path, env_kwargs=None, total_timesteps=100_000, device
     env = GaussianFieldEnv(**env_kwargs)
     check_env(env)  # Validate the Gym environment
 
+    policy_kwargs = dict(
+        features_extractor_class=CustomCNN,
+        features_extractor_kwargs=dict(
+            pooled_shape=(6, 6),
+            altitudes=6,
+            features_dim=256
+        )
+    )
+
     model = DQN(
         "MlpPolicy",
         env,
+        policy_kwargs=policy_kwargs,
         buffer_size=50000,
         device=device,
         verbose=1
@@ -141,7 +153,7 @@ if __name__ == "__main__":
         center = True
 
     env_config = {
-        "max_steps": 250,
+        "max_steps": 500,
         "grid_info": grid_info,
         "altitudes": 6,
         "fov": 60,
